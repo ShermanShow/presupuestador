@@ -105,4 +105,12 @@ export const productos: Producto[] = [
     youtubeUrl: "https://youtu.be/U2SFTxDewdE",
     datasheet: "/teneth-fc7090u-brochure/fc7090u-datasheet.svg",
   },
+  {
+    id: "otro",
+    nombre: "Otro",
+    descripcion: "",
+    descripcionLarga: "",
+    precioBase: 0,
+    imagenes: [],
+  },
 ];

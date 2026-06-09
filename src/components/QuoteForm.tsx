@@ -11,6 +11,7 @@ export interface ClienteData {
   telefono: string;
   email: string;
   productoId: string;
+  nombrePersonalizado: string;
   precio: number;
   notas: string;
   vendedorId: string;
@@ -29,6 +30,7 @@ export default function QuoteForm() {
     telefono: "",
     email: "",
     productoId: productos[0].id,
+    nombrePersonalizado: "",
     precio: productos[0].precioBase,
     notas: "",
     vendedorId: vendedores[0].id,
@@ -42,7 +44,8 @@ export default function QuoteForm() {
   const [mailStatus, setMailStatus] = useState<"idle" | "ok" | "error">("idle");
 
   const productoSeleccionado = productos.find((p) => p.id === form.productoId)!;
-  const tieneFolleto = !!(productoSeleccionado.folletos?.length || productoSeleccionado.datasheet);
+  const esOtro = form.productoId === "otro";
+  const tieneFolleto = !esOtro && !!(productoSeleccionado.folletos?.length || productoSeleccionado.datasheet);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -50,8 +53,12 @@ export default function QuoteForm() {
     const { name, value } = e.target;
     if (name === "productoId") {
       const prod = productos.find((p) => p.id === value)!;
-      setForm((f) => ({ ...f, productoId: value, precio: prod.precioBase }));
-      if (!prod.folletos?.length) setOpciones((o) => ({ ...o, incluirFolleto: false }));
+      setForm((f) => ({ ...f, productoId: value, precio: prod.precioBase, nombrePersonalizado: "" }));
+      if (value === "otro") {
+        setOpciones({ incluirFotos: false, incluirFolleto: false });
+      } else if (!prod.folletos?.length) {
+        setOpciones((o) => ({ ...o, incluirFolleto: false }));
+      }
     } else if (name === "precio") {
       setForm((f) => ({ ...f, precio: parseFloat(value) || 0 }));
     } else {
@@ -85,7 +92,8 @@ export default function QuoteForm() {
     }
   }
 
-  const formValido = form.nombre && form.apellido && form.email && form.productoId;
+  const formValido = form.nombre && form.apellido && form.email && form.productoId &&
+    (!esOtro || form.nombrePersonalizado.trim());
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -167,8 +175,22 @@ export default function QuoteForm() {
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">{productoSeleccionado.descripcion}</p>
+              {form.productoId !== "otro" && (
+                <p className="text-xs text-gray-400 mt-1">{productoSeleccionado.descripcion}</p>
+              )}
             </div>
+            {form.productoId === "otro" && (
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del equipo *</label>
+                <input
+                  name="nombrePersonalizado"
+                  value={form.nombrePersonalizado}
+                  onChange={handleChange}
+                  placeholder="Ej: Plotter de corte XY-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Precio (USD) *</label>
               <input name="precio" type="number" value={form.precio} onChange={handleChange}
@@ -189,17 +211,18 @@ export default function QuoteForm() {
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Contenido del PDF</h2>
           <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 space-y-3">
 
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className={`flex items-start gap-3 ${esOtro ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}>
               <input
                 type="checkbox"
                 checked={opciones.incluirFotos}
+                disabled={esOtro}
                 onChange={(e) => setOpciones((o) => ({ ...o, incluirFotos: e.target.checked }))}
                 className="mt-0.5 w-4 h-4 accent-orange-500"
               />
               <div>
                 <span className="text-sm font-medium text-gray-700">Incluir fotos del equipo</span>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Se agregan {productoSeleccionado.imagenes.length} foto{productoSeleccionado.imagenes.length > 1 ? "s" : ""} antes del presupuesto
+                  {esOtro ? "No disponible para equipos personalizados" : `Se agregan ${productoSeleccionado.imagenes.length} foto${productoSeleccionado.imagenes.length > 1 ? "s" : ""} antes del presupuesto`}
                 </p>
               </div>
             </label>

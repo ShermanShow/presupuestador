@@ -274,8 +274,10 @@ export default function QuotePDF({
             </View>
             <View style={S.trow}>
               <View style={S.tdDesc}>
-                <Text style={S.tdName}>{producto.nombre}</Text>
-                <Text style={S.tdSub}>{producto.descripcion}</Text>
+                <Text style={S.tdName}>
+                  {producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre}
+                </Text>
+                {producto.id !== "otro" && <Text style={S.tdSub}>{producto.descripcion}</Text>}
               </View>
               <Text style={S.tdCant}>1</Text>
               <Text style={S.tdPrecio}>USD {cliente.precio.toLocaleString("es-AR")}</Text>
