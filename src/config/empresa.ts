@@ -1,3 +1,11 @@
+export interface Vendedor {
+  id: string;
+  nombre: string;
+  telefono: string;
+  whatsapp: string;
+  email: string;
+}
+
 export const empresa = {
   nombre: "Sistemas y Soluciones Digitales SRL",
   telefono: "(011) 4342-5742",
@@ -8,6 +16,30 @@ export const empresa = {
   web: "www.sistemasysoluciones.com",
   logo: "/logo.png",
 };
+
+export const vendedores: Vendedor[] = [
+  {
+    id: "sistemas",
+    nombre: "Sistemas",
+    telefono: "(011) 4342-5742",
+    whatsapp: "5491127870446",
+    email: "info@sistemasysoluciones.com",
+  },
+  {
+    id: "javier",
+    nombre: "Javier",
+    telefono: "11-3343-4545",
+    whatsapp: "5491133434545",
+    email: "jhilario@sistemasysoluciones.com",
+  },
+  {
+    id: "andrea",
+    nombre: "Andrea",
+    telefono: "11-5598-9813",
+    whatsapp: "5491155989813",
+    email: "apozzi@sistemasysoluciones.com",
+  },
+];
 
 export interface Producto {
   id: string;

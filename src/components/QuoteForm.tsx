@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { productos, empresa } from "@/config/empresa";
+import { productos, empresa, vendedores } from "@/config/empresa";
 import QuotePreview from "./QuotePreview";
 
 export interface ClienteData {
@@ -13,6 +13,7 @@ export interface ClienteData {
   productoId: string;
   precio: number;
   notas: string;
+  vendedorId: string;
 }
 
 export interface OpcionesPDF {
@@ -30,6 +31,7 @@ export default function QuoteForm() {
     productoId: productos[0].id,
     precio: productos[0].precioBase,
     notas: "",
+    vendedorId: vendedores[0].id,
   });
   const [opciones, setOpciones] = useState<OpcionesPDF>({
     incluirFotos: false,
@@ -58,9 +60,10 @@ export default function QuoteForm() {
   }
 
   function handleWhatsApp() {
+    const vendedor = vendedores.find((v) => v.id === form.vendedorId)!;
     const telefonoLimpio = form.telefono.replace(/[\s\-().+]/g, "");
     const texto = encodeURIComponent(
-      `Hola ${form.nombre} ${form.apellido}!\nTe enviamos el presupuesto de *${productoSeleccionado.nombre}*.\nCualquier consulta estamos a tu disposicion.\n${empresa.nombre}\nTel. ${empresa.telefono}\nWeb ${empresa.web}`
+      `Hola ${form.nombre} ${form.apellido}!\nTe enviamos el presupuesto de *${productoSeleccionado.nombre}*.\nCualquier consulta estamos a tu disposicion.\n${empresa.nombre}\nTel. ${vendedor.telefono}\nWeb ${empresa.web}`
     );
     window.open(`https://wa.me/${telefonoLimpio}?text=${texto}`, "_blank");
   }
@@ -98,6 +101,28 @@ export default function QuoteForm() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+
+          {/* Vendedor */}
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Vendedor</h2>
+          <div className="flex gap-2 mb-5">
+            {vendedores.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, vendedorId: v.id }))}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                  form.vendedorId === v.id
+                    ? "text-white border-transparent"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                }`}
+                style={form.vendedorId === v.id ? { backgroundColor: "#E85500", borderColor: "#E85500" } : {}}
+              >
+                {v.nombre}
+              </button>
+            ))}
+          </div>
+
+          <hr className="my-5 border-gray-100" />
 
           {/* Datos del cliente */}
           <h2 className="text-lg font-semibold text-gray-700 mb-5">Datos del cliente</h2>

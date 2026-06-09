@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Producto } from "@/config/empresa";
+import { Producto, vendedores } from "@/config/empresa";
 import { ClienteData, OpcionesPDF } from "./QuoteForm";
 import type { QuotePDFProps } from "./QuotePDF";
 
@@ -130,8 +130,10 @@ export default function QuotePreview({ cliente, producto, opciones, onClose }: P
       });
   }, [opciones, producto]);
 
+  const vendedor = vendedores.find((v) => v.id === cliente.vendedorId) ?? vendedores[0];
+
   const pdfProps: QuotePDFProps = {
-    cliente, producto, opciones,
+    cliente, producto, opciones, vendedor,
     logoSrc, imagenesSrc, showroomSrc, folletosSrc, datasheetSrc,
     numeroPresupuesto, fecha,
   };

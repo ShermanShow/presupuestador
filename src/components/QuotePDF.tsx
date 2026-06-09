@@ -7,7 +7,7 @@ import {
   Link,
   StyleSheet,
 } from "@react-pdf/renderer";
-import { empresa, Producto } from "@/config/empresa";
+import { empresa, Producto, Vendedor } from "@/config/empresa";
 import { ClienteData, OpcionesPDF } from "./QuoteForm";
 
 const ORANGE  = "#E85500";
@@ -102,6 +102,7 @@ export interface QuotePDFProps {
   cliente: ClienteData;
   producto: Producto;
   opciones: OpcionesPDF;
+  vendedor: Vendedor;
   logoSrc: string;
   imagenesSrc: string[];
   showroomSrc: string;
@@ -112,7 +113,7 @@ export interface QuotePDFProps {
 }
 
 export default function QuotePDF({
-  cliente, producto, opciones,
+  cliente, producto, opciones, vendedor,
   logoSrc, imagenesSrc, showroomSrc, folletosSrc, datasheetSrc,
   numeroPresupuesto, fecha,
 }: QuotePDFProps) {
@@ -120,7 +121,7 @@ export default function QuotePDF({
   const conds = [
     "Este presupuesto tiene una validez de 15 días a partir de la fecha de emisión.",
     "Los precios están expresados en dólares estadounidenses (USD).",
-    `Para consultas: ${empresa.telefono}  |  WhatsApp: ${empresa.whatsappDisplay}.`,
+    `Para consultas — WhatsApp: ${vendedor.telefono}  |  ${vendedor.email}`,
   ];
 
   const fotoH = imagenesSrc.length === 1 ? 270 : 185;
@@ -240,7 +241,7 @@ export default function QuotePDF({
 
           {/* Contacto */}
           <View style={{ marginBottom: 4 }}>
-            {[empresa.direccion, `${empresa.telefono}  |  ${empresa.email}`, empresa.web].map((txt, i) => (
+            {[empresa.direccion, `${vendedor.telefono}  |  ${vendedor.email}`, empresa.web].map((txt, i) => (
               <View key={i} style={S.contactRow}>
                 <View style={S.bullet} />
                 <Text style={S.contactTxt}>{txt}</Text>
