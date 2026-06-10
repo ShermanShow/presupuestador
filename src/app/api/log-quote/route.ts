@@ -17,7 +17,7 @@ async function enviarNotificacion() {
 
   await transporter.sendMail({
     from: `"${empresa.nombre}" <${smtpUser}>`,
-    to: "emart@sistemasysoluciones.com",
+    to: "emarti@sistemasysoluciones.com",
     subject: "Se cargaron presupuestos en el presupuestador",
     text: "Se cargaron presupuestos en el presupuestador",
   });
