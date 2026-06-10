@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { vendedores } from "@/config/empresa";
+import nodemailer from "nodemailer";
+import { empresa, vendedores } from "@/config/empresa";
+
+async function enviarNotificacion() {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpUser || !smtpPass || smtpPass === "tu_contraseña_de_aplicacion_aqui") return;
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: false,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+
+  await transporter.sendMail({
+    from: `"${empresa.nombre}" <${smtpUser}>`,
+    to: "emart@sistemasysoluciones.com",
+    subject: "Se cargaron presupuestos en el presupuestador",
+    text: "Se cargaron presupuestos en el presupuestador",
+  });
+}
 
 export async function POST(req: NextRequest) {
   const { cliente, producto, opciones, clientId } = await req.json();
@@ -14,28 +35,24 @@ export async function POST(req: NextRequest) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
   try {
-    const vendedor = vendedores.find((v) => v.id === cliente.vendedorId)?.nombre ?? "";
+    const vendedor = vendedores.find((v) => v.id === cliente.vendedorId) ?? vendedores[0];
     const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
 
     // Evitar duplicados si clientId existe
     if (clientId) {
-      const { data: existing, error: fetchErr } = await supabase
+      const { data: existing } = await supabase
         .from("presupuestos")
         .select("numero")
         .eq("client_id", clientId)
         .limit(1)
         .single();
-      if (fetchErr && fetchErr.code !== "PGRST116") {
-        // PGRST116 = no rows? ignore
-      }
       if (existing && (existing as any).numero) {
         return NextResponse.json({ ok: true, numero: (existing as any).numero });
       }
     }
 
-    // Insertar fila; se espera que la tabla `presupuestos` tenga una columna `numero` con default (serial/identity)
     const insertPayload = {
-      vendedor,
+      vendedor: vendedor.nombre,
       nombre: cliente.nombre,
       apellido: cliente.apellido,
       empresa: cliente.empresa || null,
@@ -60,6 +77,10 @@ export async function POST(req: NextRequest) {
     }
 
     const numero = (data as any)?.numero ?? null;
+
+    // Notificación por mail (sin bloquear la respuesta)
+    enviarNotificacion().catch((err) => console.error("Error enviando notificación:", err));
+
     return NextResponse.json({ ok: true, numero });
   } catch (err) {
     console.error("Error en /api/log-quote:", err);
