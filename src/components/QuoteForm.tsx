@@ -39,6 +39,8 @@ export default function QuoteForm() {
     incluirFotos: false,
     incluirFolleto: false,
   });
+  const [loggedClientId, setLoggedClientId] = useState<string | null>(null);
+  const [numeroPresupuesto, setNumeroPresupuesto] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [enviandoMail, setEnviandoMail] = useState(false);
   const [mailStatus, setMailStatus] = useState<"idle" | "ok" | "error">("idle");
@@ -72,13 +74,15 @@ export default function QuoteForm() {
     const texto = encodeURIComponent(
       `Hola ${form.nombre} ${form.apellido}!\nTe enviamos el presupuesto de *${productoSeleccionado.nombre}*.\nCualquier consulta estamos a tu disposicion.\n${empresa.nombre}\nTel. ${vendedor.telefono}\nWeb ${empresa.web}`
     );
-    window.open(`https://wa.me/${telefonoLimpio}?text=${texto}`, "_blank");
+    // asegurar que quede registrado antes de abrir WhatsApp (no bloquear UI)
+    logQuoteIfNeeded().finally(() => window.open(`https://wa.me/${telefonoLimpio}?text=${texto}`, "_blank"));
   }
 
   async function handleMail() {
     setEnviandoMail(true);
     setMailStatus("idle");
     try {
+      await logQuoteIfNeeded();
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,6 +93,26 @@ export default function QuoteForm() {
       setMailStatus("error");
     } finally {
       setEnviandoMail(false);
+    }
+  }
+
+  async function logQuoteIfNeeded() {
+    if (loggedClientId) return;
+    try {
+      const clientId = (typeof crypto !== "undefined" && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `${Date.now()}-${Math.random()}`;
+      const res = await fetch("/api/log-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cliente: form, producto: productoSeleccionado, opciones, clientId }),
+      });
+      const data = await res.json();
+      setLoggedClientId(clientId);
+      if (data && data.numero) {
+        setNumeroPresupuesto(data.numero);
+        localStorage.setItem("presupuestador_ultimo_numero", String(data.numero));
+      }
+    } catch (err) {
+      console.error("Error logueando presupuesto:", err);
     }
   }
 
@@ -249,7 +273,7 @@ export default function QuoteForm() {
 
           {/* Botones */}
           <div className="mt-6 flex flex-wrap gap-3">
-            <button onClick={() => setShowPreview(true)} disabled={!formValido}
+            <button onClick={async () => { await logQuoteIfNeeded(); setShowPreview(true); }} disabled={!formValido}
               className="flex items-center gap-2 disabled:opacity-40 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
               style={{ backgroundColor: "#E85500" }}>
               👁 Ver presupuesto

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { empresa } from "@/config/empresa";
+import fs from "fs";
+import path from "path";
+import ExcelJS from "exceljs";
+import { empresa, vendedores } from "@/config/empresa";
 
 export async function POST(req: NextRequest) {
   const { cliente, producto } = await req.json();
@@ -78,6 +81,61 @@ export async function POST(req: NextRequest) {
       subject: `Presupuesto ${producto.nombre} — ${empresa.nombre}`,
       html,
     });
+    // Guardar en Excel (no bloquear el envío de mail si falla)
+    try {
+      const dataDir = path.join(process.cwd(), "data");
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+      const filePath = path.join(dataDir, "presupuestos.xlsx");
+
+      const workbook = new ExcelJS.Workbook();
+      let worksheet: ExcelJS.Worksheet;
+      if (fs.existsSync(filePath)) {
+        await workbook.xlsx.readFile(filePath);
+        worksheet = workbook.getWorksheet("Presupuestos") || workbook.addWorksheet("Presupuestos");
+      } else {
+        worksheet = workbook.addWorksheet("Presupuestos");
+        worksheet.addRow([
+          "Fecha",
+          "Nº de Presupuesto",
+          "Vendedor",
+          "Nombre",
+          "Apellido",
+          "Empresa",
+          "Telefono",
+          "Email",
+          "Equipo",
+          "Precio",
+          "Notas adicionales",
+        ]);
+      }
+
+      // Generar numero de presupuesto simple (base 1100 + filas existentes)
+      const baseNumero = 1100;
+      const nextNumero = worksheet.rowCount <= 1 ? baseNumero : baseNumero + (worksheet.rowCount - 1);
+
+      const vendedor = vendedores.find((v) => v.id === cliente.vendedorId)?.nombre ?? "";
+      const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
+      const fechaNow = new Date().toLocaleString("es-AR");
+
+      worksheet.addRow([
+        fechaNow,
+        nextNumero,
+        vendedor,
+        cliente.nombre,
+        cliente.apellido,
+        cliente.empresa || "",
+        cliente.telefono || "",
+        cliente.email || "",
+        equipo,
+        cliente.precio ?? "",
+        cliente.notas || "",
+      ]);
+
+      await workbook.xlsx.writeFile(filePath);
+    } catch (err) {
+      console.error("Error guardando en Excel:", err);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error enviando mail:", err);

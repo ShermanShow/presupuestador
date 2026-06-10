@@ -78,10 +78,14 @@ interface Props {
   producto: Producto;
   opciones: OpcionesPDF;
   onClose: () => void;
+  numeroPresupuesto?: number | null;
 }
 
-export default function QuotePreview({ cliente, producto, opciones, onClose }: Props) {
-  const [numeroPresupuesto] = useState<number>(() => obtenerSiguienteNumero());
+export default function QuotePreview({ cliente, producto, opciones, onClose, numeroPresupuesto: numeroProp }: Props) {
+  const [numeroPresupuesto] = useState<number>(() => {
+    if (typeof numeroProp === "number" && !isNaN(numeroProp)) return numeroProp;
+    return obtenerSiguienteNumero();
+  });
   const [loadingAssets, setLoadingAssets] = useState(true);
   const [generating, setGenerating] = useState(false);
 
