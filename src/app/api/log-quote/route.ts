@@ -1,81 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import ExcelJS from "exceljs";
+import { createClient } from "@supabase/supabase-js";
 import { vendedores } from "@/config/empresa";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { cliente, producto, opciones, clientId } = body;
+  const { cliente, producto, opciones, clientId } = await req.json();
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return NextResponse.json({ error: "Supabase no configurado. Definir SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
   try {
-    const dataDir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-    const filePath = path.join(dataDir, "presupuestos.xlsx");
+    const vendedor = vendedores.find((v) => v.id === cliente.vendedorId)?.nombre ?? "";
+    const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
 
-    const workbook = new ExcelJS.Workbook();
-    let worksheet: ExcelJS.Worksheet;
-    if (fs.existsSync(filePath)) {
-      await workbook.xlsx.readFile(filePath);
-      worksheet = workbook.getWorksheet("Presupuestos") || workbook.addWorksheet("Presupuestos");
-    } else {
-      worksheet = workbook.addWorksheet("Presupuestos");
-      worksheet.addRow([
-        "Fecha",
-        "Nº de Presupuesto",
-        "Vendedor",
-        "Nombre",
-        "Apellido",
-        "Empresa",
-        "Telefono",
-        "Email",
-        "Equipo",
-        "Precio",
-        "Notas adicionales",
-        "ClientId",
-      ]);
-    }
-
-    // Si clientId provisto, buscar fila existente
+    // Evitar duplicados si clientId existe
     if (clientId) {
-      const idCol = worksheet.getColumn("L"); // 12th column is ClientId
-      for (let i = 2; i <= worksheet.rowCount; i++) {
-        const row = worksheet.getRow(i);
-        if ((row.getCell(12).value || "") === clientId) {
-          const existingNumero = row.getCell(2).value as number | undefined;
-          return NextResponse.json({ ok: true, numero: existingNumero ?? null });
-        }
+      const { data: existing, error: fetchErr } = await supabase
+        .from("presupuestos")
+        .select("numero")
+        .eq("client_id", clientId)
+        .limit(1)
+        .single();
+      if (fetchErr && fetchErr.code !== "PGRST116") {
+        // PGRST116 = no rows? ignore
+      }
+      if (existing && (existing as any).numero) {
+        return NextResponse.json({ ok: true, numero: (existing as any).numero });
       }
     }
 
-    const baseNumero = 1100;
-    const nextNumero = baseNumero + Math.max(0, worksheet.rowCount - 1);
-
-    const vendedor = vendedores.find((v) => v.id === cliente.vendedorId)?.nombre ?? "";
-    const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
-    const fechaNow = new Date().toLocaleString("es-AR");
-
-    const newRow = [
-      fechaNow,
-      nextNumero,
+    // Insertar fila; se espera que la tabla `presupuestos` tenga una columna `numero` con default (serial/identity)
+    const insertPayload = {
       vendedor,
-      cliente.nombre,
-      cliente.apellido,
-      cliente.empresa || "",
-      cliente.telefono || "",
-      cliente.email || "",
+      nombre: cliente.nombre,
+      apellido: cliente.apellido,
+      empresa: cliente.empresa || null,
+      telefono: cliente.telefono || null,
+      email: cliente.email || null,
       equipo,
-      cliente.precio ?? "",
-      cliente.notas || "",
-      clientId || "",
-    ];
+      precio: cliente.precio ?? null,
+      notas: cliente.notas || null,
+      client_id: clientId || null,
+      opciones: opciones || null,
+    };
 
-    worksheet.addRow(newRow);
-    await workbook.xlsx.writeFile(filePath);
+    const { data, error } = await supabase
+      .from("presupuestos")
+      .insert(insertPayload)
+      .select("numero")
+      .single();
 
-    return NextResponse.json({ ok: true, numero: nextNumero });
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return NextResponse.json({ error: "Error guardando en Supabase" }, { status: 500 });
+    }
+
+    const numero = (data as any)?.numero ?? null;
+    return NextResponse.json({ ok: true, numero });
   } catch (err) {
-    console.error("Error guardando log de presupuesto:", err);
-    return NextResponse.json({ error: "Error guardando" }, { status: 500 });
+    console.error("Error en /api/log-quote:", err);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
 }
