@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { productos, empresa, vendedores } from "@/config/empresa";
+import { useEffect, useState } from "react";
+import { productos, empresa, vendedores as vendedoresIniciales, Vendedor } from "@/config/empresa";
 import QuotePreview from "./QuotePreview";
 
 export interface ClienteData {
@@ -23,6 +23,7 @@ export interface OpcionesPDF {
 }
 
 export default function QuoteForm() {
+  const [vendedores, setVendedores] = useState<Vendedor[]>(vendedoresIniciales);
   const [form, setForm] = useState<ClienteData>({
     nombre: "",
     apellido: "",
@@ -44,6 +45,15 @@ export default function QuoteForm() {
   const [showPreview, setShowPreview] = useState(false);
   const [enviandoMail, setEnviandoMail] = useState(false);
   const [mailStatus, setMailStatus] = useState<"idle" | "ok" | "error">("idle");
+
+  useEffect(() => {
+    fetch("/api/vendedores").then((response) => response.json()).then((data) => {
+      if (Array.isArray(data.vendedores) && data.vendedores.length) {
+        setVendedores(data.vendedores);
+        setForm((current) => ({ ...current, vendedorId: data.vendedores.some((v: Vendedor) => v.id === current.vendedorId) ? current.vendedorId : data.vendedores[0].id }));
+      }
+    }).catch(() => undefined);
+  }, []);
 
   const productoSeleccionado = productos.find((p) => p.id === form.productoId)!;
   const esOtro = form.productoId === "otro";
@@ -86,7 +96,7 @@ export default function QuoteForm() {
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cliente: form, producto: productoSeleccionado }),
+      body: JSON.stringify({ cliente: form, producto: productoSeleccionado, vendedor: vendedorSeleccionado }),
       });
       setMailStatus(res.ok ? "ok" : "error");
     } catch {
@@ -95,6 +105,8 @@ export default function QuoteForm() {
       setEnviandoMail(false);
     }
   }
+
+  const vendedorSeleccionado = vendedores.find((v) => v.id === form.vendedorId) ?? vendedores[0];
 
   async function logQuoteIfNeeded() {
     if (loggedClientId) return;
@@ -130,6 +142,7 @@ export default function QuoteForm() {
             <h1 className="text-xl font-bold text-gray-800">{empresa.nombre}</h1>
             <p className="text-sm text-gray-500">Generador de Presupuestos</p>
           </div>
+          <a href="/admin" className="ml-auto text-xs font-semibold text-orange-700 hover:text-orange-800">Administración</a>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -298,6 +311,7 @@ export default function QuoteForm() {
           cliente={form}
           producto={productoSeleccionado}
           opciones={opciones}
+          vendedor={vendedorSeleccionado}
           onClose={() => setShowPreview(false)}
         />
       )}

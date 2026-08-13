@@ -35,7 +35,14 @@ export async function POST(req: NextRequest) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
   try {
-    const vendedor = vendedores.find((v) => v.id === cliente.vendedorId) ?? vendedores[0];
+    let vendedor = vendedores.find((v) => v.id === cliente.vendedorId) ?? vendedores[0];
+    const { data: vendedorDb } = await supabase
+      .from("vendedores")
+      .select("id,nombre,email,telefono,activo")
+      .eq("id", cliente.vendedorId)
+      .eq("activo", true)
+      .maybeSingle();
+    if (vendedorDb) vendedor = vendedorDb;
     const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
 
     // Evitar duplicados si clientId existe

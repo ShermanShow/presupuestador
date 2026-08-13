@@ -2,7 +2,7 @@ export interface Vendedor {
   id: string;
   nombre: string;
   telefono: string;
-  whatsapp: string;
+  whatsapp?: string;
   email: string;
 }
 
