@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 type Cliente = { id: string; nombre: string; apellido?: string; empresa?: string; telefono?: string; email?: string; estado: string; origen: string };
 type Interaccion = { id: string; fecha: string; tipo: string; nota: string; vendedor?: string };
 type Evento = { id: string; fecha_inicio: string; duracion_min: number; accion: string; estado: string };
-const estados = ["Presupuestado", "Demo", "Cerrado", "Recontactar"];
+const estados = ["Presupuestado", "Demo", "Cerrado", "Recontactar", "Vendido", "Postventa", "Otro"];
 
 export default function CRM() {
   const [password, setPassword] = useState(""); const [unlocked, setUnlocked] = useState(false); const [query, setQuery] = useState(""); const [clientes, setClientes] = useState<Cliente[]>([]); const [cliente, setCliente] = useState<Cliente | null>(null); const [interacciones, setInteracciones] = useState<Interaccion[]>([]); const [agenda, setAgenda] = useState<Evento[]>([]); const [nota, setNota] = useState(""); const [accion, setAccion] = useState(""); const [fecha, setFecha] = useState(""); const [message, setMessage] = useState(""); const [nuevo, setNuevo] = useState(false); const [form, setForm] = useState({ nombre: "", apellido: "", empresa: "", telefono: "", email: "" });
