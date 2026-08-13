@@ -85,6 +85,29 @@ export async function POST(req: NextRequest) {
 
     const numero = (data as any)?.numero ?? null;
 
+    // Mantener un registro de cliente para el CRM, incluso si solo se cargó el nombre.
+    const clientFields = {
+      nombre: cliente.nombre,
+      apellido: cliente.apellido || null,
+      empresa: cliente.empresa || null,
+      telefono: cliente.telefono || null,
+      email: cliente.email || null,
+      estado: "Presupuestado",
+      origen: "presupuestador",
+      updated_at: new Date().toISOString(),
+    };
+    let crmClient: any = null;
+    if (cliente.email) {
+      const result = await supabase.from("clientes").select("id").eq("email", cliente.email).limit(1).maybeSingle();
+      crmClient = result.data;
+    }
+    if (!crmClient && cliente.telefono) {
+      const result = await supabase.from("clientes").select("id").eq("telefono", cliente.telefono).limit(1).maybeSingle();
+      crmClient = result.data;
+    }
+    if (crmClient) await supabase.from("clientes").update(clientFields).eq("id", crmClient.id);
+    else await supabase.from("clientes").insert(clientFields);
+
     // Notificación por mail (sin bloquear la respuesta)
     enviarNotificacion().catch((err) => console.error("Error enviando notificación:", err));
 

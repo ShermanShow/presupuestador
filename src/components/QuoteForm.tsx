@@ -128,8 +128,7 @@ export default function QuoteForm() {
     }
   }
 
-  const formValido = form.nombre && form.apellido && form.email && form.productoId &&
-    (!esOtro || form.nombrePersonalizado.trim());
+  const formValido = Boolean(form.nombre.trim());
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -178,7 +177,7 @@ export default function QuoteForm() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Apellido *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Apellido</label>
               <input name="apellido" value={form.apellido} onChange={handleChange} placeholder="Pérez"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
@@ -193,7 +192,7 @@ export default function QuoteForm() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Email *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="juan@empresa.com"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
@@ -205,7 +204,7 @@ export default function QuoteForm() {
           <h2 className="text-lg font-semibold text-gray-700 mb-5">Equipo y precio</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Equipo *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Equipo</label>
               <select name="productoId" value={form.productoId} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
                 {productos.map((p) => (
@@ -218,7 +217,7 @@ export default function QuoteForm() {
             </div>
             {form.productoId === "otro" && (
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del equipo *</label>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del equipo</label>
                 <input
                   name="nombrePersonalizado"
                   value={form.nombrePersonalizado}
@@ -229,7 +228,7 @@ export default function QuoteForm() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Precio (USD) *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Precio (USD)</label>
               <input name="precio" type="number" value={form.precio} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
