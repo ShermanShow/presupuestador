@@ -3,12 +3,21 @@ import { createClient } from "@supabase/supabase-js";
 
 export type EquipoAlquiler = {
   id: string;
+  activo: boolean;
   marca: string;
   modelo: string;
   tipo: string;
   tecnologia: string;
+  toner: string;
+  platina: string;
   ppm: number;
+  ppmTexto: string;
+  capacidad: number;
+  red: string;
   duplex: boolean;
+  duplexScan: boolean;
+  ardf: boolean;
+  copia: boolean;
   scan: boolean;
   equipoUsd: number;
   cpcBnUsd: number;
@@ -24,10 +33,10 @@ export type ConfigAlquileres = {
 };
 
 const fallbackEquipos: EquipoAlquiler[] = [
-  { id: "demo-ricoh-im550", marca: "RICOH", modelo: "IM 550 SPF", tipo: "B&N", tecnologia: "LASER", ppm: 55, duplex: true, scan: true, equipoUsd: 1350, cpcBnUsd: 0.0053, cpcColorUsd: 0, },
-  { id: "demo-ricoh-imc300", marca: "RICOH", modelo: "IM C300 F", tipo: "COLOR", tecnologia: "LASER", ppm: 30, duplex: true, scan: true, equipoUsd: 1263, cpcBnUsd: 0.0081, cpcColorUsd: 0.0425, },
-  { id: "demo-xerox-c7020", marca: "XEROX", modelo: "VERSALINK C7020 D", tipo: "COLOR", tecnologia: "LASER", ppm: 20, duplex: true, scan: true, equipoUsd: 1800, cpcBnUsd: 0.0163, cpcColorUsd: 0.0649, },
-];
+  { id: "demo-ricoh-im550", activo: true, marca: "RICOH", modelo: "IM 550 SPF", tipo: "B&N", tecnologia: "LASER", toner: "ORIGINAL", platina: "OFICIO", ppm: 55, ppmTexto: "55", capacidad: 500, red: "SI", duplex: true, duplexScan: true, ardf: true, copia: true, scan: true, equipoUsd: 1350, cpcBnUsd: 0.0053, cpcColorUsd: 0 },
+  { id: "demo-ricoh-imc300", activo: true, marca: "RICOH", modelo: "IM C300 F", tipo: "COLOR", tecnologia: "LASER", toner: "ORIGINAL", platina: "A4", ppm: 30, ppmTexto: "30", capacidad: 250, red: "SI", duplex: true, duplexScan: true, ardf: true, copia: true, scan: true, equipoUsd: 1263, cpcBnUsd: 0.0081, cpcColorUsd: 0.0425 },
+  { id: "demo-xerox-c7020", activo: true, marca: "XEROX", modelo: "VERSALINK C7020 D", tipo: "COLOR", tecnologia: "LASER", toner: "ORIGINAL", platina: "A3", ppm: 20, ppmTexto: "20", capacidad: 520, red: "SI", duplex: true, duplexScan: true, ardf: true, copia: true, scan: true, equipoUsd: 1800, cpcBnUsd: 0.0163, cpcColorUsd: 0.0649 },
+]; 
 
 const fallbackConfig: ConfigAlquileres = { dolar: 1550, amortizacionMeses: 15, precioBnUsd: 0.02, multiplicadorColor: 3 };
 
@@ -52,12 +61,21 @@ function boolFrom(row: Record<string, unknown>, keys: string[]) {
 function normalizeEquipo(row: Record<string, unknown>, index: number): EquipoAlquiler {
   return {
     id: textFrom(row, ["id", "uuid", "codigo", "row"], `equipo-${index}`),
+    activo: boolFrom(row, ["activo", "active"]) || textFrom(row, ["estado"]).toUpperCase() !== "DISC.",
     marca: textFrom(row, ["marca", "brand"], "—"),
     modelo: textFrom(row, ["modelo", "model", "nombre"], "Equipo sin modelo"),
     tipo: textFrom(row, ["tipo", "tipo_equipo"], "B&N"),
     tecnologia: textFrom(row, ["tecnologia", "technology"], ""),
+    toner: textFrom(row, ["toner_tipo", "toner"], ""),
+    platina: textFrom(row, ["platina", "tamanio", "tamaño"], ""),
     ppm: numberFrom(row, ["ppm", "velocidad", "ppm_raw"]),
+    ppmTexto: textFrom(row, ["ppm_texto", "ppm_raw", "ppm"], ""),
+    capacidad: numberFrom(row, ["capacidad", "cap"]),
+    red: textFrom(row, ["red"], ""),
     duplex: boolFrom(row, ["duplex", "doble_faz"]),
+    duplexScan: boolFrom(row, ["duplex_scan", "dscan"]),
+    ardf: boolFrom(row, ["ardf", "alimentador"]),
+    copia: boolFrom(row, ["copia", "copy", "copiadora"]),
     scan: boolFrom(row, ["scan", "scanner", "escaner", "escanner"]),
     equipoUsd: numberFrom(row, ["equipo_usd", "valor_equipo_usd", "precio_usd", "valor_usd"]),
     cpcBnUsd: numberFrom(row, ["cpc_bn_usd", "costo_copia_bn_usd", "cpc_usd"]),
@@ -88,7 +106,7 @@ export async function GET() {
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
   const [{ data: equipos, error: equiposError }, { data: config, error: configError }] = await Promise.all([
-    supabase.from("equipos_alquiler").select("*").eq("activo", true).order("marca").order("modelo"),
+    supabase.from("equipos_alquiler").select("*").order("marca").order("modelo"),
     supabase.from("config_alquileres").select("*").order("clave"),
   ]);
 
