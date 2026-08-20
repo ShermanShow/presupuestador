@@ -52,7 +52,11 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
         pdf.addImage(slice.toDataURL("image/png"), "PNG", margin, margin, imageWidth, sliceHeight * imageWidth / canvas.width);
         offset += pageContentHeight; page++;
       }
-      pdf.save(`presupuesto-${(client || "cliente").toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.pdf`);
+      const pad2 = (n: number) => String(n).padStart(2, "0");
+      const now = new Date();
+      const ts = `${pad2(now.getFullYear() % 100)}${pad2(now.getMonth() + 1)}${pad2(now.getHours())}${pad2(now.getMinutes())}`;
+      const nombreArchivo = (client || "cliente").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      pdf.save(`${ts}-${nombreArchivo}.pdf`);
     } catch (err) {
       console.error("Error generando PDF de alquiler:", err);
       setPdfError("No se pudo generar el PDF. Revisá la consola (F12) y probá de nuevo.");
