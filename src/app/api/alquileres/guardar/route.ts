@@ -40,15 +40,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ presupuestos: data || [] });
 }
 
-export async function POST(request: NextRequest) {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return NextResponse.json({ error: "Supabase no está configurado" }, { status: 503 });
-
-  const payload = await request.json();
-  const row = {
-    numero: `ALQ-${Date.now()}`,
-    fecha: new Date().toISOString(),
+function buildRow(payload: Record<string, unknown>) {
+  return {
     cliente: payload.cliente || null,
     contacto: payload.contacto || null,
     email: payload.email || null,
@@ -72,12 +65,43 @@ export async function POST(request: NextRequest) {
     excedente_color_ars: payload.excedente_color_ars,
     validez_dias: payload.validez_dias ?? 15,
     observaciones: payload.observaciones || null,
+  };
+}
+
+export async function POST(request: NextRequest) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Supabase no está configurado" }, { status: 503 });
+
+  const payload = await request.json();
+  const row = {
+    numero: `ALQ-${Date.now()}`,
+    fecha: new Date().toISOString(),
     estado: payload.estado || "BORRADOR",
+    ...buildRow(payload),
   };
   const supabase = createClient(url, key, { auth: { persistSession: false } });
   const { data, error } = await supabase.from("presupuestos_alquiler").insert(row).select("*").single();
   if (error) {
     console.error("Error guardando alquiler:", error);
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  return NextResponse.json({ ok: true, presupuesto: data });
+}
+
+export async function PATCH(request: NextRequest) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return NextResponse.json({ error: "Supabase no está configurado" }, { status: 503 });
+
+  const payload = await request.json();
+  const id = String(payload.id || "");
+  if (!id) return NextResponse.json({ error: "Falta el id del presupuesto" }, { status: 400 });
+
+  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await supabase.from("presupuestos_alquiler").update(buildRow(payload)).eq("id", id).select("*").single();
+  if (error) {
+    console.error("Error actualizando alquiler:", error);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
   return NextResponse.json({ ok: true, presupuesto: data });

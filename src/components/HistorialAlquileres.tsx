@@ -122,6 +122,12 @@ export default function HistorialAlquileres() {
     setMinRenta(""); setMaxRenta(""); setDesde(""); setHasta("");
   }
 
+  // Abrir el presupuesto en el cotizador para verlo, modificarlo y descargarlo como PDF
+  function editarPresupuesto(p: PresupuestoAlquiler) {
+    sessionStorage.setItem("presupuesto_editar", JSON.stringify(p));
+    window.location.href = "/alquileres";
+  }
+
   const hayFiltros = q || marca || modelo || vendedor || estado || minRenta || maxRenta || desde || hasta;
   const total = useMemo(() => items.length, [items]);
 
@@ -233,7 +239,10 @@ export default function HistorialAlquileres() {
                   <td className="px-4 py-3 text-right font-semibold">{ars(p.renta_final_ars)}</td>
                   <td className="px-4 py-3"><span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${estadoBadge(p.estado)}`}>{p.estado || "—"}</span></td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => setDetalle(p)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200">Ver</button>
+                    <div className="flex justify-end gap-1.5">
+                      <button onClick={() => editarPresupuesto(p)} className="rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100">Editar / PDF</button>
+                      <button onClick={() => setDetalle(p)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-200">Detalle</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -258,6 +267,7 @@ export default function HistorialAlquileres() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${estadoBadge(detalle.estado)}`}>{detalle.estado || "—"}</span>
+                <button onClick={() => editarPresupuesto(detalle)} className="rounded-lg bg-[#E85500] px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90">Editar y bajar PDF</button>
                 <button onClick={() => setDetalle(null)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-200">Cerrar</button>
               </div>
             </div>
