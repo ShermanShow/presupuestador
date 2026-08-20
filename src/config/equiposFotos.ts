@@ -9,4 +9,6 @@
 //   "RICOH IM 550 SPF": "/equipos/ricoh-im550.jpg"
 //
 // Cuando las fotos estén en public/equipos/, completar acá el mapeo.
-export const FOTO_POR_MODELO: Record<string, string> = {};
+export const FOTO_POR_MODELO: Record<string, string> = {
+  "RICOH IM 550 SPF": "/equipos/ricoh-im550.png",
+};
