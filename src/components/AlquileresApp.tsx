@@ -4,12 +4,14 @@
 import { useEffect, useMemo, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { FOTO_POR_MODELO } from "@/config/equiposFotos";
 
 type Equipo = {
   id: string; activo: boolean; marca: string; modelo: string; tipo: string; tecnologia: string;
   toner: string; platina: string; ppm: number; ppmTexto: string; capacidad: number; red: string;
   duplex: boolean; duplexScan: boolean; ardf: boolean; copia: boolean; scan: boolean;
   equipoUsd: number; cpcBnUsd: number; cpcColorUsd: number;
+  fotoUrl?: string;
 };
 type Config = { dolar: number; amortizacionMeses: number; precioBnUsd: number; multiplicadorColor: number };
 
@@ -57,6 +59,7 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
     } finally { setDownloading(false); }
   }
   const excedenteBn = bnUsd; const excedenteColor = colorCpc * colorMult;
+  const fotoSrc = selected.fotoUrl || FOTO_POR_MODELO[`${selected.marca} ${selected.modelo}`] || null;
   return <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-xs font-bold uppercase tracking-wider text-orange-600">4. Propuesta editable</p><h3 className="mt-1 text-xl font-bold">Vista previa del presupuesto</h3></div>
@@ -76,9 +79,18 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
       <h4 className="mt-5 text-[17px] font-black">{client || "Cliente"}</h4>
       <p className="mt-3">De nuestra mayor consideración, por la presente, de acuerdo a lo solicitado, tengo el agrado de hacerles llegar la siguiente propuesta de trabajo.</p>
       <h5 className="mt-7 border-b pb-2 text-[16px] font-black" style={{ borderColor: "#e5e7eb" }}> EQUIPOS A INSTALAR:</h5>
-      <p className="mt-3 pl-4 text-[14px] font-black">Una (1) {selected.marca} {selected.modelo}</p>
-      <p className="mt-2 pl-4 font-bold">Prestaciones más destacadas:</p>
-      <ul className="mt-1 list-disc space-y-1 pl-10">{features.map((feature: string) => <li key={feature}>{feature}</li>)}</ul>
+      <div className="mt-3 flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="pl-4 text-[14px] font-black">Una (1) {selected.marca} {selected.modelo}</p>
+          <p className="mt-2 pl-4 font-bold">Prestaciones más destacadas:</p>
+          <ul className="mt-1 list-disc space-y-1 pl-10">{features.map((feature: string) => <li key={feature}>{feature}</li>)}</ul>
+        </div>
+        {fotoSrc && (
+          <div className="w-44 shrink-0">
+            <img src={fotoSrc} alt={`${selected.marca} ${selected.modelo}`} className="w-full rounded-lg border" style={{ borderColor: "#e5e7eb" }} />
+          </div>
+        )}
+      </div>
       <h5 className="mt-7 border-b pb-2 text-[16px] font-black" style={{ borderColor: "#e5e7eb" }}> CONDICIONES DE CONTRATACIÓN:</h5>
       <p className="mt-3 pl-4"><b> Valor de renta:</b> El precio del alquiler mensual del equipo es de <b>{money(rent)}</b> e incluye las primeras {bnCopies} impresiones B&N del mes.</p>
       <p className="mt-2 pl-4"><b> Excedente:</b> El valor de la impresión B&N es de <b>{money(excedenteBn * dolar)}</b> por copia.</p>
