@@ -19,6 +19,7 @@ const usd = (n: number) => `USD ${new Intl.NumberFormat("es-AR", { minimumFracti
 
 function ProposalPreview({ selected, client, setClient, seller, setSeller, rent, setRent, validity, setValidity, notes, setNotes, bnCopies, bnUsd, colorCopies, colorCpc, colorMult, dolar }: any) {
   const [downloading, setDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState("");
   const features = [
     selected.copia && selected.scan ? "Copiadora / Impresora / Escáner." : selected.copia ? "Copiadora / Impresora." : "Impresora.",
     selected.ppm ? `${selected.ppm} páginas por minuto.` : "",
@@ -30,6 +31,7 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
   ].filter(Boolean);
   async function downloadPdf() {
     setDownloading(true);
+    setPdfError("");
     try {
       const node = document.getElementById("proposal-pdf");
       if (!node) return;
@@ -49,6 +51,9 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
         offset += pageContentHeight; page++;
       }
       pdf.save(`presupuesto-${(client || "cliente").toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.pdf`);
+    } catch (err) {
+      console.error("Error generando PDF de alquiler:", err);
+      setPdfError("No se pudo generar el PDF. Revisá la consola (F12) y probá de nuevo.");
     } finally { setDownloading(false); }
   }
   const excedenteBn = bnUsd; const excedenteColor = colorCpc * colorMult;
@@ -57,6 +62,7 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
       <div><p className="text-xs font-bold uppercase tracking-wider text-orange-600">4. Propuesta editable</p><h3 className="mt-1 text-xl font-bold">Vista previa del presupuesto</h3></div>
       <button onClick={downloadPdf} disabled={downloading} className="rounded-lg bg-[#f28c28] px-4 py-3 font-bold text-white disabled:opacity-60">{downloading ? "Generando PDF..." : "Descargar PDF"}</button>
     </div>
+    {pdfError && <p className="mb-3 text-xs font-semibold text-red-600">{pdfError}</p>}
     <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <label className="text-xs font-semibold text-gray-600">Cliente<input value={client} onChange={e => setClient(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" /></label>
       <label className="text-xs font-semibold text-gray-600">Vendedor<input value={seller} onChange={e => setSeller(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" /></label>
@@ -64,26 +70,26 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
       <label className="text-xs font-semibold text-gray-600">Validez (días)<input type="number" value={validity} onChange={e => setValidity(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" /></label>
       <label className="text-xs font-semibold text-gray-600 sm:col-span-2 lg:col-span-1">Observaciones<input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" /></label>
     </div>
-    <div id="proposal-pdf" className="mx-auto max-w-[760px] bg-white px-8 py-8 text-[12px] leading-[1.45] text-[#111827] shadow-inner">
-      <div className="flex items-center border-b border-gray-200 pb-5"><img src="/logo.png" alt="Sistemas y Soluciones" className="h-12 w-auto" /></div>
+    <div id="proposal-pdf" className="mx-auto max-w-[760px] bg-white px-8 py-8 text-[12px] leading-[1.45] text-[#111827]">
+      <div className="flex items-center border-b pb-5" style={{ borderColor: "#e5e7eb" }}><img src="/logo.png" alt="Sistemas y Soluciones" className="h-12 w-auto" /></div>
       <div className="pt-7 text-right text-[10px]">Buenos Aires, {new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date())}</div>
       <h4 className="mt-5 text-[17px] font-black">{client || "Cliente"}</h4>
-      <p className="mt-3">De nuestra mayor consideracin, por la presente, de acuerdo a lo solicitado, tengo el agrado de hacerles llegar la siguiente propuesta de trabajo.</p>
-      <h5 className="mt-7 border-b border-gray-200 pb-2 text-[16px] font-black"> EQUIPOS A INSTALAR:</h5>
+      <p className="mt-3">De nuestra mayor consideración, por la presente, de acuerdo a lo solicitado, tengo el agrado de hacerles llegar la siguiente propuesta de trabajo.</p>
+      <h5 className="mt-7 border-b pb-2 text-[16px] font-black" style={{ borderColor: "#e5e7eb" }}> EQUIPOS A INSTALAR:</h5>
       <p className="mt-3 pl-4 text-[14px] font-black">Una (1) {selected.marca} {selected.modelo}</p>
       <p className="mt-2 pl-4 font-bold">Prestaciones más destacadas:</p>
       <ul className="mt-1 list-disc space-y-1 pl-10">{features.map((feature: string) => <li key={feature}>{feature}</li>)}</ul>
-      <h5 className="mt-7 border-b border-gray-200 pb-2 text-[16px] font-black"> CONDICIONES DE CONTRATACIÓN:</h5>
+      <h5 className="mt-7 border-b pb-2 text-[16px] font-black" style={{ borderColor: "#e5e7eb" }}> CONDICIONES DE CONTRATACIÓN:</h5>
       <p className="mt-3 pl-4"><b> Valor de renta:</b> El precio del alquiler mensual del equipo es de <b>{money(rent)}</b> e incluye las primeras {bnCopies} impresiones B&N del mes.</p>
       <p className="mt-2 pl-4"><b> Excedente:</b> El valor de la impresión B&N es de <b>{money(excedenteBn * dolar)}</b> por copia.</p>
       {colorCopies > 0 && <p className="mt-2 pl-4"><b> Excedente color:</b> El valor por copia color es de <b>{money(excedenteColor * dolar)}</b>.</p>}
-      <h5 className="mt-7 border-b border-gray-200 pb-2 text-[16px] font-black"> MODALIDAD DE SERVICIO:</h5>
+      <h5 className="mt-7 border-b pb-2 text-[16px] font-black" style={{ borderColor: "#e5e7eb" }}> MODALIDAD DE SERVICIO:</h5>
       <p className="mt-3">El servicio incluye:</p>
       <ul className="mt-1 list-disc space-y-1 pl-6"><li>Instalación y configuración de los equipos.</li><li>Todos los insumos y mano de obra incluidos en caso de renta (menos el papel).</li><li>Mano de obra on site.</li><li>Compromiso con la calidad del servicio.</li><li>Los precios están expresados en pesos y no incluyen el IVA.</li><li>La oferta tiene validez por {validity} días.</li></ul>
       {notes && <p className="mt-4"><b>Observaciones:</b> {notes}</p>}
       <p className="mt-8">Quedando a su disposición por cualquier inquietud, lo saludo muy atentamente.</p>
       <p className="mt-8 font-bold">{seller || "Sistemas y Soluciones"}</p>
-      <div className="mt-10 grid grid-cols-4 border-t border-gray-300 pt-2 text-center text-[8px] text-gray-500"><span>Web<br />sistemassoluciones.com</span><span>E-mail<br />info@sistemassoluciones.com</span><span>Dirección<br />Curapalige 510 - Nave 7</span><span>Teléfono<br />011 - 4342 5742</span></div>
+      <div className="mt-10 grid grid-cols-4 border-t pt-2 text-center text-[8px]" style={{ borderColor: "#d1d5db", color: "#6b7280" }}><span>Web<br />sistemassoluciones.com</span><span>E-mail<br />info@sistemassoluciones.com</span><span>Dirección<br />Curapalige 510 - Nave 7</span><span>Teléfono<br />011 - 4342 5742</span></div>
     </div>
   </section>;
 }
