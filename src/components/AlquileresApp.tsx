@@ -87,7 +87,7 @@ function ProposalPreview({ selected, client, setClient, seller, setSeller, rent,
         </div>
         {fotoSrc && (
           <div className="w-44 shrink-0">
-            <img src={fotoSrc} alt={`${selected.marca} ${selected.modelo}`} className="w-full rounded-lg border" style={{ borderColor: "#e5e7eb" }} />
+            <img src={fotoSrc} alt={`${selected.marca} ${selected.modelo}`} className="w-full" />
           </div>
         )}
       </div>
