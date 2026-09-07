@@ -38,6 +38,59 @@ const fallbackEquipos: EquipoAlquiler[] = [
   { id: "demo-xerox-c7020", activo: true, marca: "XEROX", modelo: "VERSALINK C7020 D", tipo: "COLOR", tecnologia: "LASER", toner: "ORIGINAL", platina: "A3", ppm: 20, ppmTexto: "20", capacidad: 520, red: "SI", duplex: true, duplexScan: true, ardf: true, copia: true, scan: true, equipoUsd: 1800, cpcBnUsd: 0.0163, cpcColorUsd: 0.0649 },
 ]; 
 
+// Catálogo comercial compartido para alquileres. Los nombres de modelo se
+// conservan tal como se usan internamente en la planilla de costos.
+const catalogoKonica: EquipoAlquiler[] = [
+  ["ACCPRESS C2060", "COLOR", 20500, 0.02, 0.0220848918, 60],
+  ["ACCPRESS C3080", "COLOR", 25200, 0.02, 0.0220848918, 80],
+  ["ACCPRESS C4065", "COLOR", 27350, 0.02, 0.0236782704, 65],
+  ["ACCPRESS C4080", "COLOR", 34500, 0.02, 0.0236782704, 80],
+  ["ACCPRINT C3070", "COLOR", 24000, 0.02, 0.0220848918, 70],
+  ["ACCPRINT C3070L", "COLOR", 23000, 0.02, 0.0230866727, 70],
+  ["BIZC558", "COLOR", 3850, 0.02, 0.0400680584, 55],
+  ["BIZC658", "COLOR", 4050, 0.02, 0.0400680584, 65],
+  ["BIZC659", "COLOR", 4550, 0.02, 0.0296223723, 65],
+  ["C308-C368", "COLOR", 2600, 0.02, 0.0440193958, 30],
+  ["C450I", "COLOR", 3600, 0.02, 0.0351719645, 45],
+  ["C458", "COLOR", 3600, 0.02, 0.0402219095, 45],
+  ["C550I", "COLOR", 3850, 0.02, 0.0351719645, 55],
+  ["C6085", "COLOR", 31700, 0.02, 0.0180362422, 85],
+  ["C6100", "COLOR", 31700, 0.02, 0.0180362422, 100],
+  ["308-368", "B&N", 2450, 0.0075879250, 0, 36],
+  ["450I", "B&N", 2900, 0.0069511612, 0, 45],
+  ["458.0", "B&N", 3000, 0.0091872604, 0, 45],
+  ["550I", "B&N", 3150, 0.0106775334, 0, 55],
+  ["ACCPRESS 6120", "B&N", 12400, 0.0052190176, 0, 120],
+  ["BIZ558E", "B&N", 3300, 0.0069601712, 0, 58],
+  ["BIZ658E", "B&N", 3600, 0.0069601712, 0, 65],
+  ["BIZ808", "B&N", 4150, 0.0065039412, 0, 80],
+  ["BIZ958", "B&N", 4250, 0.0065039412, 0, 95],
+  ["BIZPRO 1100", "B&N", 9350, 0.0053133683, 0, 100],
+].map(([modelo, tipo, equipoUsd, cpcBnUsd, cpcColorUsd, ppm], index) => ({
+  id: `catalogo-konica-${String(modelo).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+  activo: true,
+  marca: "KONICA MINOLTA",
+  modelo: String(modelo),
+  tipo: String(tipo),
+  tecnologia: "LASER",
+  toner: tipo === "COLOR" ? "CMYK" : "K",
+  platina: "A3",
+  ppm: Number(ppm),
+  ppmTexto: String(ppm),
+  capacidad: 0,
+  red: "SI",
+  duplex: true,
+  duplexScan: true,
+  ardf: true,
+  copia: true,
+  scan: true,
+  equipoUsd: Number(equipoUsd),
+  cpcBnUsd: Number(cpcBnUsd),
+  cpcColorUsd: Number(cpcColorUsd),
+}));
+
+const catalogoCompleto = [...fallbackEquipos, ...catalogoKonica];
+
 const fallbackConfig: ConfigAlquileres = { dolar: 1550, amortizacionMeses: 15, precioBnUsd: 0.02, multiplicadorColor: 3 };
 
 function numberFrom(row: Record<string, unknown>, keys: string[], fallback = 0) {
@@ -102,7 +155,7 @@ function normalizeConfig(rows: Record<string, unknown> | Record<string, unknown>
 export async function GET() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.json({ equipos: fallbackEquipos, config: fallbackConfig, source: "demo" });
+  if (!url || !key) return NextResponse.json({ equipos: catalogoCompleto, config: fallbackConfig, source: "catalogo" });
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
   const [{ data: equipos, error: equiposError }, { data: config, error: configError }] = await Promise.all([
@@ -111,7 +164,10 @@ export async function GET() {
   ]);
 
   if (equiposError || configError) {
-    return NextResponse.json({ equipos: fallbackEquipos, config: fallbackConfig, source: "demo", warning: equiposError?.message || configError?.message }, { status: 200 });
+    return NextResponse.json({ equipos: catalogoCompleto, config: fallbackConfig, source: "catalogo", warning: equiposError?.message || configError?.message }, { status: 200 });
   }
-  return NextResponse.json({ equipos: (equipos || []).map(normalizeEquipo), config: normalizeConfig((config || []) as Record<string, unknown>[]), source: "supabase" });
+  const dbEquipos = (equipos || []).map(normalizeEquipo);
+  const claves = new Set(dbEquipos.map((equipo) => `${equipo.marca} ${equipo.modelo}`.toUpperCase()));
+  const faltantes = catalogoKonica.filter((equipo) => !claves.has(`${equipo.marca} ${equipo.modelo}`.toUpperCase()));
+  return NextResponse.json({ equipos: [...dbEquipos, ...faltantes], config: normalizeConfig((config || []) as Record<string, unknown>[]), source: faltantes.length ? "supabase+catalogo" : "supabase" });
 }
