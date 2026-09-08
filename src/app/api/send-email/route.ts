@@ -3,10 +3,10 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
-import { empresa, vendedores } from "@/config/empresa";
+import { empresa } from "@/config/empresa";
 
 export async function POST(req: NextRequest) {
-  const { cliente, producto } = await req.json();
+  const { cliente, producto, vendedor: vendedorData } = await req.json();
 
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       const baseNumero = 1100;
       const nextNumero = worksheet.rowCount <= 1 ? baseNumero : baseNumero + (worksheet.rowCount - 1);
 
-      const vendedor = vendedores.find((v) => v.id === cliente.vendedorId)?.nombre ?? "";
+      const vendedor = vendedorData?.nombre ?? "";
       const equipo = producto.id === "otro" ? (cliente.nombrePersonalizado || "Equipo a cotizar") : producto.nombre;
       const fechaNow = new Date().toLocaleString("es-AR");
 

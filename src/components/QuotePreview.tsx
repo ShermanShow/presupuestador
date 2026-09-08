@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Producto, vendedores } from "@/config/empresa";
+import { Producto, Vendedor } from "@/config/empresa";
 import { ClienteData, OpcionesPDF } from "./QuoteForm";
 import type { QuotePDFProps } from "./QuotePDF";
 
@@ -77,11 +77,12 @@ interface Props {
   cliente: ClienteData;
   producto: Producto;
   opciones: OpcionesPDF;
+  vendedor: Vendedor;
   onClose: () => void;
   numeroPresupuesto?: number | null;
 }
 
-export default function QuotePreview({ cliente, producto, opciones, onClose, numeroPresupuesto: numeroProp }: Props) {
+export default function QuotePreview({ cliente, producto, opciones, vendedor, onClose, numeroPresupuesto: numeroProp }: Props) {
   const [numeroPresupuesto] = useState<number>(() => {
     if (typeof numeroProp === "number" && !isNaN(numeroProp)) return numeroProp;
     return obtenerSiguienteNumero();
@@ -133,8 +134,6 @@ export default function QuotePreview({ cliente, producto, opciones, onClose, num
         setLoadingAssets(false);
       });
   }, [opciones, producto]);
-
-  const vendedor = vendedores.find((v) => v.id === cliente.vendedorId) ?? vendedores[0];
 
   const pdfProps: QuotePDFProps = {
     cliente, producto, opciones, vendedor,

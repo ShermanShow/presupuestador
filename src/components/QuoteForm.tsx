@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { productos, empresa, vendedores } from "@/config/empresa";
+import { useEffect, useState } from "react";
+import { productos, empresa, vendedores as vendedoresIniciales, Vendedor } from "@/config/empresa";
 import QuotePreview from "./QuotePreview";
 
 export interface ClienteData {
@@ -23,6 +23,7 @@ export interface OpcionesPDF {
 }
 
 export default function QuoteForm() {
+  const [vendedores, setVendedores] = useState<Vendedor[]>(vendedoresIniciales);
   const [form, setForm] = useState<ClienteData>({
     nombre: "",
     apellido: "",
@@ -44,6 +45,46 @@ export default function QuoteForm() {
   const [showPreview, setShowPreview] = useState(false);
   const [enviandoMail, setEnviandoMail] = useState(false);
   const [mailStatus, setMailStatus] = useState<"idle" | "ok" | "error">("idle");
+
+  // Detección de cambios sin guardar
+  const [cleanSignature, setCleanSignature] = useState<string | null>(null);
+  const [preparado, setPreparado] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNumero, setEditingNumero] = useState<number | null>(null);
+
+  const propSignature = JSON.stringify([form, opciones]);
+  const dirty = cleanSignature !== null && propSignature !== cleanSignature;
+
+  // Tomar el estado precargado como "limpio" cuando termina la inicialización
+  useEffect(() => {
+    if (preparado && cleanSignature === null) setCleanSignature(propSignature);
+  }, [preparado, cleanSignature, propSignature]);
+
+  // Avisar al intentar salir / cerrar / recargar con cambios sin guardar
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  useEffect(() => {
+    let vendedorList = vendedoresIniciales;
+    fetch("/api/vendedores")
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data.vendedores) && data.vendedores.length) {
+          vendedorList = data.vendedores;
+          setVendedores(data.vendedores);
+          setForm((current) => ({ ...current, vendedorId: data.vendedores.some((v: Vendedor) => v.id === current.vendedorId) ? current.vendedorId : data.vendedores[0].id }));
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        aplicarPresupuestoGuardado(vendedorList);
+        setPreparado(true);
+      });
+  }, []);
 
   const productoSeleccionado = productos.find((p) => p.id === form.productoId)!;
   const esOtro = form.productoId === "otro";
@@ -86,7 +127,7 @@ export default function QuoteForm() {
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cliente: form, producto: productoSeleccionado }),
+      body: JSON.stringify({ cliente: form, producto: productoSeleccionado, vendedor: vendedorSeleccionado }),
       });
       setMailStatus(res.ok ? "ok" : "error");
     } catch {
@@ -96,9 +137,72 @@ export default function QuoteForm() {
     }
   }
 
-  async function logQuoteIfNeeded() {
-    if (loggedClientId) return;
+  const vendedorSeleccionado = vendedores.find((v) => v.id === form.vendedorId) ?? vendedores[0];
+
+  // Pre-cargar un presupuesto guardado (traído desde el historial) para editarlo
+  function aplicarPresupuestoGuardado(vendedorList: Vendedor[]) {
     try {
+      const raw = sessionStorage.getItem("presupuesto_editar_equipo");
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      sessionStorage.removeItem("presupuesto_editar_equipo");
+
+      let productoId = productos[0].id;
+      let nombrePersonalizado = "";
+      const equipoTexto = p.equipo || "";
+      const match = productos.find((prod) => prod.nombre === equipoTexto);
+      if (match) productoId = match.id;
+      else if (equipoTexto) { productoId = "otro"; nombrePersonalizado = equipoTexto; }
+
+      let vendedorId = vendedorList[0]?.id || vendedoresIniciales[0].id;
+      const vendMatch = vendedorList.find((v) => v.nombre === p.vendedor);
+      if (vendMatch) vendedorId = vendMatch.id;
+
+      setForm({
+        nombre: p.nombre || "",
+        apellido: p.apellido || "",
+        empresa: p.empresa || "",
+        telefono: p.telefono || "",
+        email: p.email || "",
+        productoId,
+        nombrePersonalizado,
+        precio: typeof p.precio === "number" ? p.precio : 0,
+        notas: p.notas || "",
+        vendedorId,
+      });
+      setOpciones({
+        incluirFotos: !!p.opciones?.incluirFotos,
+        incluirFolleto: !!p.opciones?.incluirFolleto,
+      });
+      if (typeof p.numero === "number") {
+        setNumeroPresupuesto(p.numero);
+        setEditingNumero(p.numero);
+      }
+      setEditingId(p.id || null);
+    } catch (err) {
+      console.error("Error precargando presupuesto:", err);
+      sessionStorage.removeItem("presupuesto_editar_equipo");
+    }
+  }
+
+  async function logQuoteIfNeeded() {
+    if (loggedClientId && !editingId) return;
+    try {
+      if (editingId) {
+        const res = await fetch("/api/log-quote", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingId, cliente: form, producto: productoSeleccionado, opciones }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setCleanSignature(JSON.stringify([form, opciones]));
+          if (data?.presupuesto?.numero) setNumeroPresupuesto(data.presupuesto.numero);
+        } else {
+          console.error("Error actualizando presupuesto:", data);
+        }
+        return;
+      }
       const clientId = (typeof crypto !== "undefined" && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `${Date.now()}-${Math.random()}`;
       const res = await fetch("/api/log-quote", {
         method: "POST",
@@ -116,8 +220,7 @@ export default function QuoteForm() {
     }
   }
 
-  const formValido = form.nombre && form.apellido && form.email && form.productoId &&
-    (!esOtro || form.nombrePersonalizado.trim());
+  const formValido = Boolean(form.nombre.trim());
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -130,7 +233,18 @@ export default function QuoteForm() {
             <h1 className="text-xl font-bold text-gray-800">{empresa.nombre}</h1>
             <p className="text-sm text-gray-500">Generador de Presupuestos</p>
           </div>
+          <div className="ml-auto flex items-center gap-3">
+            {dirty && <span className="rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-800">⚠ Sin guardar</span>}
+            <a href="/presupuestos/historial" onClick={(e) => { if (dirty && !window.confirm("Hay cambios sin guardar. ¿Querés salir igual?")) e.preventDefault(); }} className="text-xs font-semibold text-gray-600 hover:text-gray-800">Historial</a>
+            <a href="/admin" className="text-xs font-semibold text-orange-700 hover:text-orange-800">Administración</a>
+          </div>
         </div>
+
+        {editingId && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800">
+            Editando presupuesto <strong>N° {editingNumero}</strong> — al ver/enviar se actualizará el registro original.
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
@@ -165,7 +279,7 @@ export default function QuoteForm() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Apellido *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Apellido</label>
               <input name="apellido" value={form.apellido} onChange={handleChange} placeholder="Pérez"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
@@ -180,7 +294,7 @@ export default function QuoteForm() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Email *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="juan@empresa.com"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
@@ -192,7 +306,7 @@ export default function QuoteForm() {
           <h2 className="text-lg font-semibold text-gray-700 mb-5">Equipo y precio</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Equipo *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Equipo</label>
               <select name="productoId" value={form.productoId} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
                 {productos.map((p) => (
@@ -205,7 +319,7 @@ export default function QuoteForm() {
             </div>
             {form.productoId === "otro" && (
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del equipo *</label>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del equipo</label>
                 <input
                   name="nombrePersonalizado"
                   value={form.nombrePersonalizado}
@@ -216,7 +330,7 @@ export default function QuoteForm() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Precio (USD) *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Precio (USD)</label>
               <input name="precio" type="number" value={form.precio} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </div>
@@ -298,6 +412,7 @@ export default function QuoteForm() {
           cliente={form}
           producto={productoSeleccionado}
           opciones={opciones}
+          vendedor={vendedorSeleccionado}
           onClose={() => setShowPreview(false)}
         />
       )}
